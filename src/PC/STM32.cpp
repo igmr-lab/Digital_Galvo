@@ -28,6 +28,8 @@
 
 // For UART
 HANDLE hComm;
+const int NUM_OF_POSITIONS_PER_CHUNK = 2620;
+USHORT tx_buffer2[2 * 32 * NUM_OF_POSITIONS_PER_CHUNK];
 
 // For printing out error message 
 void print_and_quit(const char cstring[]) {
@@ -159,6 +161,7 @@ int test(int argc, char** argv)
     FT_HANDLE handle;
     FILE* fp;
     FILE* fp2;
+    FILE* fp3;
     FILE* fr;
     FILE* fr2;
 
@@ -169,7 +172,12 @@ int test(int argc, char** argv)
 
     fopen_s(&fp, "data.csv", "w+");
     fopen_s(&fp2, "renew_data.csv", "w+");
-    fopen_s(&fr, "EnginePattern_raster_amp1_res512_hexadecimal_downsample.txt", "r");
+    fopen_s(&fp3, "sent_data.csv", "w+");
+    // fopen_s(&fr, "EnginePattern_raster_amp1_res512_sparse_hexadecimal_downsample2.txt", "r");
+    // fopen_s(&fr, "EnginePattern_raster_amp1_res512_hexadecimal_downsample.txt", "r");
+    // fopen_s(&fr, "zero_positions.txt", "r");
+    fopen_s(&fr, "Radius_0x1_hex_data_new.txt", "r");
+
 
     FT_STATUS status;
     bool status2;
@@ -182,10 +190,10 @@ int test(int argc, char** argv)
     LPDWORD ptransferCount = &transferCount;
     DWORD options = SPI_TRANSFER_OPTIONS_SIZE_IN_BYTES | SPI_TRANSFER_OPTIONS_CHIPSELECT_ENABLE | SPI_TRANSFER_OPTIONS_CHIPSELECT_DISABLE;
 
-    int COUNT = 32 * 16;
+    int COUNT = 32 * 128;
     const int CHUNK_NUM = 32;
     const int NUM_OF_POSITIONS_PER_CHUNK = 2620;
-    int GALVO_DELAY = 0;
+    int GALVO_DELAY = 8;
 
     int CHUNK_NUM_CURRENT = 0;
     int COMPARISON_CHUNK_NUM_CURRENT = 0;
@@ -243,6 +251,12 @@ int test(int argc, char** argv)
             tx_buffer[4 * k + 1] = (uint8_t)((data >> 8) & 0xFF);
             tx_buffer[4 * k] = (uint8_t)(data & 0xFF);
         }
+    }
+
+    for (int k = 0; k < CHUNK_NUM * NUM_OF_POSITIONS_PER_CHUNK; ++k) {
+        uint32_t data = input_data[k];
+        tx_buffer2[2 * k] = (uint16_t)((data >> 16) & 0xFFFF);
+        tx_buffer2[2 * k + 1] = (uint16_t)(data & 0xFFFF);
     }
 
     while (1) {
@@ -429,8 +443,8 @@ int test(int argc, char** argv)
                     x = rx_buffer[j + 3] * 256 + rx_buffer[j + 2];
                     y = rx_buffer[j + 1] * 256 + rx_buffer[j];
                     fprintf(fp, "%d,%d,", x, y);
-                    if (i > CHUNK_NUM + 2) {
-                        CHUNK_NUM_CURRENT = (i - 3) % CHUNK_NUM;
+                    if (i > CHUNK_NUM - 1) {
+                        COMPARISON_CHUNK_NUM_CURRENT = (i - 3) % CHUNK_NUM;
                         uint32_t data = input_data[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK + j / 4];
                         original_x = (uint16_t)((data >> 16) & 0xFFFF);
                         original_y = (uint16_t)(data & 0xFFFF);
@@ -439,24 +453,27 @@ int test(int argc, char** argv)
                         uint32_t error_y = y - original_y;
                         fprintf(fp2, "%d,%d,", error_x, error_y);
 
-                        //tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2] =
-                        //    tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2] - (x - original_x);
+                        tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2] =
+                            tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2] - (x - original_x);
 
-                        //tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + 1 + j / 2] =
-                        //    tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2 + 1] - (y - original_y);
+                        tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + 1 + j / 2] =
+                            tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2 + 1] - (y - original_y);
 
-                        int number = (COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_BYTES_PER_CHUNK + j + CHUNK_NUM * NUM_OF_BYTES_PER_CHUNK - 20)
+                        fprintf(fp3, "%d,%d,", tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2], tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + 1 + j / 2]);
+
+                        int number = (COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_BYTES_PER_CHUNK + j + CHUNK_NUM * NUM_OF_BYTES_PER_CHUNK - 32)
                             % (CHUNK_NUM * NUM_OF_BYTES_PER_CHUNK);
 
-                        //tx_buffer[number] = tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2 + 1] % 256;
-                        //tx_buffer[number + 1] = tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2 + 1] / 256;
-                        //tx_buffer[number + 2] = tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2] % 256;
-                        //tx_buffer[number + 3] = tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2] / 256;
+                        tx_buffer[number] = tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2 + 1] % 256;
+                        tx_buffer[number + 1] = tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2 + 1] / 256;
+                        tx_buffer[number + 2] = tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2] % 256;
+                        tx_buffer[number + 3] = tx_buffer2[COMPARISON_CHUNK_NUM_CURRENT * NUM_OF_POSITIONS_PER_CHUNK * 2 + j / 2] / 256;
                     }
                 }
 
                 fprintf(fp, "\n");
                 fprintf(fp2, "\n");
+                fprintf(fp3, "\n");
                 printf("%d, %d, %d, %d \n", i, state, RxByte, idle_sent);
                 i = i + 1;
 
