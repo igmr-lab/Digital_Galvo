@@ -173,10 +173,7 @@ int test(int argc, char** argv)
     fopen_s(&fp, "data.csv", "w+");
     fopen_s(&fp2, "renew_data.csv", "w+");
     fopen_s(&fp3, "sent_data.csv", "w+");
-    // fopen_s(&fr, "EnginePattern_raster_amp1_res512_sparse_hexadecimal_downsample2.txt", "r");
-    // fopen_s(&fr, "EnginePattern_raster_amp1_res512_hexadecimal_downsample.txt", "r");
-    // fopen_s(&fr, "zero_positions.txt", "r");
-    fopen_s(&fr, "Radius_0x1_hex_data_new.txt", "r");
+    fopen_s(&fr, "EnginePattern_raster_amp1_res512_hexadecimal_downsample.txt", "r");
 
 
     FT_STATUS status;
@@ -302,14 +299,6 @@ int test(int argc, char** argv)
                 ping = 1;
             }
 
-            // if ((state == STREAM_STATE || state == FF_STREAM_STATE) && ch == (KB_CONSTANT + 5)){
-            //    state = 5;
-            // }
-
-            // if ((state == 5) && ch == (KB_CONSTANT + 2)) {
-            //     state = 2;
-            // }
-
             if (state == PREP_STATE && ch == (KB_CONSTANT + PING_STATE)) {
                 state = PING_STATE;
                 msg = ((uint32_t)state << 16) | (uint16_t)payload;
@@ -328,18 +317,8 @@ int test(int argc, char** argv)
                 state = SET_STATE;
             }
 
-            // if (state == 5 && ch == (KB_CONSTANT + PING_STATE)) {
-            //     state = PING_STATE;
-            //     msg = ((uint32_t)state << 16) | (uint16_t)payload;
-            //     status = WriteFile(hComm, &msg, 4, &bytesWrite, NULL);
-            //     status2 = ReadFile(hComm, &ping_buffer[0], 4, &bytesWrite, NULL);
-            //     printf("Ping ID result: %d, %d, %d, %d \n", ping_buffer[0], ping_buffer[1], ping_buffer[2], ping_buffer[3]);
-            //     state = SET_STATE;
-            // }
-
         }
 
-        // if (state == STREAM_STATE || state == FF_STREAM_STATE || state == 5 || state == STOP_STATE) {
         if (state == STREAM_STATE || state == FF_STREAM_STATE || state == STOP_STATE) {
 
             Sleep(1);
@@ -388,31 +367,11 @@ int test(int argc, char** argv)
                     status = SPI_Write(handle, tx_message, NUM_OF_BYTES_PER_CHUNK + MULTIPLIER, ptransferCount, options);
                     idle_sent = 1;
                 }
-                // else if (state == 5 && idle_sent == 0) {
-                //     memcpy(tx_message, &tx_buffer[CHUNK_NUM_CURRENT * NUM_OF_BYTES_PER_CHUNK], NUM_OF_BYTES_PER_CHUNK);
-                //     UCHAR extra_bytes[4] = { 5, 0, 0, 0 };
-                //     memcpy(&tx_message[NUM_OF_BYTES_PER_CHUNK], extra_bytes, MULTIPLIER);
-                //     status = SPI_Write(handle, tx_message, NUM_OF_BYTES_PER_CHUNK + MULTIPLIER, ptransferCount, options);
-                //     idle_sent = 1;
-                // }
+                    
                 else if (idle_sent == 1) {
                     if (state == STOP_STATE) {
                         state = 0;
                     }
-                    // else if (state == 5) {
-                    //     char input = '0';
-                    //     do {
-                    //         if (_kbhit()) {
-                    //             input = _getch();
-                    //         }
-                    //     } while (input != '2'); 
-                    //     if (input == '2') {
-                    //         state = 2;
-                    //         msg = ((uint32_t)state << 16) | (uint16_t)payload;
-                    //         status = WriteFile(hComm, &msg, 4, &bytesWrite, NULL);
-                    //         idle_sent = 0;
-                    //     }
-                    // }
                 }
             }
 
