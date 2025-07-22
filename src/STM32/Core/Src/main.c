@@ -78,10 +78,10 @@ static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
-
 uint16_t pwmData[4] = {1, 0, 0, 0};
+// uint16_t pwmData[8] = {1, 0, 0, 0, 0, 0, 0, 0};
 
-int COUNT = 32 * 16;
+int COUNT = 32 * 128;
 int count = 2;
 int BYTE_TO_BITS = 4;
 int STATE_DIVIDER = 16;
@@ -183,6 +183,7 @@ void HAL_SPI_RxCpltCallback (SPI_HandleTypeDef *hspi){
 
 
 void HAL_SAI_TxCpltCallback (SAI_HandleTypeDef *hsai){
+	LED_Toggle();
 	if(ping == 1){
 		ping = 0;
 	}
